@@ -18,6 +18,7 @@ export type BlobEntry = {
 export type RenderContext = {
   defs: string[];
   clipCounter: number;
+  shadowCounter: number;
   warnings: string[];
 };
 
@@ -32,6 +33,7 @@ export type RenderScreenOptions = {
   includeFills?: boolean;
   includeStrokes?: boolean;
   includeImages?: boolean;
+  includeShadows?: boolean;
   background?: string;
   scale?: number;
 };
@@ -49,6 +51,7 @@ export const DEFAULT_RENDER_OPTIONS: Required<RenderScreenOptions> = {
   includeFills: true,
   includeStrokes: true,
   includeImages: false,
+  includeShadows: true,
   background: "",
   scale: 1,
 };

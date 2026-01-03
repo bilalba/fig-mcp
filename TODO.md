@@ -1,11 +1,13 @@
 # TODO - Fig MCP Server
 
 ## Priority
-- [ ] Server error: `TypeError: Do not know how to serialize a BigInt`
-- [ ] Zoom is too sensitive and laggy
+- [x] Server error: `TypeError: Do not know how to serialize a BigInt` (fixed: added `jsonReplacer` in server.ts)
+- [x] Shadows not implemented
+- [ ] Refactor render out of the experimental folder.
 - [ ] Gradient backgrounds don’t render
 - [ ] Color blur doesn’t render
 - [ ] Letter spacing is wrong or not parsed
+- [ ] Zoom is too sensitive and laggy
 
 ## Other Issues
 - [ ] SVG loading is too heavy; explore alternatives

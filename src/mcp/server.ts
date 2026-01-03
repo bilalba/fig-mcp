@@ -444,6 +444,11 @@ export function createServer(): Server {
                 description: "Include image reference metadata (default: true)",
                 default: true,
               },
+              includeEffects: {
+                type: "boolean",
+                description: "Include effects (shadows, blurs) (default: true)",
+                default: true,
+              },
               compact: {
                 type: "boolean",
                 description: "Use compact JSON formatting (no indentation) (default: false)",
@@ -491,6 +496,11 @@ export function createServer(): Server {
               includeImageRefs: {
                 type: "boolean",
                 description: "Include image reference metadata (default: true)",
+                default: true,
+              },
+              includeEffects: {
+                type: "boolean",
+                description: "Include effects (shadows, blurs) (default: true)",
                 default: true,
               },
               compact: {
@@ -727,7 +737,7 @@ export function createServer(): Server {
         {
           name: "render_screen",
           description:
-            "Experimental: render a node subtree to a PNG screenshot using its bounds, fills, strokes, and text. Node ID format: 'sessionID:localID' (e.g., '457:1607'). Hyphen format also accepted.",
+            "Experimental: render a node subtree to a PNG screenshot using its bounds, fills, strokes, shadows, and text. Node ID format: 'sessionID:localID' (e.g., '457:1607'). Hyphen format also accepted.",
           inputSchema: {
             type: "object",
             properties: {
@@ -748,6 +758,7 @@ export function createServer(): Server {
                   includeFills: { type: "boolean" },
                   includeStrokes: { type: "boolean" },
                   includeImages: { type: "boolean" },
+                  includeShadows: { type: "boolean", description: "Include drop shadows and inner shadows (default: true)" },
                   background: { type: "string" },
                   scale: { type: "number" },
                   maxWidth: { type: "number", description: "Maximum width in pixels (default: 800)" },
@@ -965,6 +976,7 @@ export function createServer(): Server {
             includeStyles = true,
             includeLayout = true,
             includeImageRefs = true,
+            includeEffects = true,
             compact = false,
           } = args as {
             filePath: string;
@@ -974,6 +986,7 @@ export function createServer(): Server {
             includeStyles?: boolean;
             includeLayout?: boolean;
             includeImageRefs?: boolean;
+            includeEffects?: boolean;
             compact?: boolean;
           };
 
@@ -1018,6 +1031,7 @@ export function createServer(): Server {
             {
               includeStyles,
               includeLayout,
+              includeEffects,
             }
           );
 
@@ -1055,6 +1069,7 @@ export function createServer(): Server {
             includeStyles = true,
             includeLayout = true,
             includeImageRefs = true,
+            includeEffects = true,
             compact = false,
           } = args as {
             filePath: string;
@@ -1064,6 +1079,7 @@ export function createServer(): Server {
             includeStyles?: boolean;
             includeLayout?: boolean;
             includeImageRefs?: boolean;
+            includeEffects?: boolean;
             compact?: boolean;
           };
 
@@ -1095,6 +1111,7 @@ export function createServer(): Server {
             {
               includeStyles,
               includeLayout,
+              includeEffects,
             }
           );
 
@@ -1614,6 +1631,8 @@ export function createServer(): Server {
               typeof options?.includeStrokes === "boolean" ? options.includeStrokes : undefined,
             includeImages:
               typeof options?.includeImages === "boolean" ? options.includeImages : undefined,
+            includeShadows:
+              typeof options?.includeShadows === "boolean" ? options.includeShadows : undefined,
             background: typeof options?.background === "string" ? options.background : undefined,
             scale: typeof options?.scale === "number" ? options.scale : undefined,
           });

@@ -17,6 +17,8 @@ import type {
   TextStyle,
   Paint,
   DerivedTextData,
+  Effect,
+  Color,
 } from "../parser/types.js";
 import type {
   TransformMatrix,
@@ -51,6 +53,159 @@ export type {
   RenderScreenOptions,
   RenderScreenResult,
 } from "./render-types.js";
+
+// ============================================================================
+// Shadow/Effect Rendering
+// ============================================================================
+
+/**
+ * Convert a color to an rgba() string for SVG
+ */
+function colorToRgba(color: Color | undefined): string {
+  if (!color) return "rgba(0,0,0,0.25)";
+  const r = Math.round(color.r * 255);
+  const g = Math.round(color.g * 255);
+  const b = Math.round(color.b * 255);
+  const a = color.a ?? 1;
+  return `rgba(${r},${g},${b},${a.toFixed(3)})`;
+}
+
+/**
+ * Generate an SVG filter definition for a drop shadow effect.
+ * Returns the filter ID.
+ */
+function generateDropShadowFilter(
+  effect: Effect,
+  ctx: RenderContext,
+): string {
+  const filterId = `shadow-${ctx.shadowCounter++}`;
+  const x = effect.offset?.x ?? 0;
+  const y = effect.offset?.y ?? 0;
+  const blur = effect.radius ?? 0;
+  const spread = effect.spread ?? 0;
+  const color = colorToRgba(effect.color);
+
+  // For SVG, we use feDropShadow or a combination of feGaussianBlur + feOffset + feFlood
+  // feDropShadow is simpler but has less control over spread
+  // We'll use a more complex filter to support spread
+
+  if (spread === 0) {
+    // Simple drop shadow without spread
+    ctx.defs.push(
+      `<filter id="${filterId}" x="-50%" y="-50%" width="200%" height="200%">` +
+      `<feDropShadow dx="${x}" dy="${y}" stdDeviation="${blur / 2}" flood-color="${color}" />` +
+      `</filter>`
+    );
+  } else {
+    // Drop shadow with spread - use morphology to expand/contract
+    // stdDeviation is blur/2 because SVG blur is roughly 2x CSS blur
+    const stdDev = blur / 2;
+    ctx.defs.push(
+      `<filter id="${filterId}" x="-100%" y="-100%" width="300%" height="300%">` +
+      // Create the shadow
+      `<feGaussianBlur in="SourceAlpha" stdDeviation="${stdDev}" result="blur" />` +
+      // Apply spread using morphology (dilate for positive, erode for negative)
+      (spread !== 0
+        ? `<feMorphology in="blur" operator="${spread > 0 ? 'dilate' : 'erode'}" radius="${Math.abs(spread)}" result="spread" />`
+        : `<feOffset in="blur" result="spread" />`) +
+      // Offset the shadow
+      `<feOffset in="spread" dx="${x}" dy="${y}" result="offsetBlur" />` +
+      // Color the shadow
+      `<feFlood flood-color="${color}" result="color" />` +
+      `<feComposite in="color" in2="offsetBlur" operator="in" result="shadow" />` +
+      // Merge with original
+      `<feMerge>` +
+      `<feMergeNode in="shadow" />` +
+      `<feMergeNode in="SourceGraphic" />` +
+      `</feMerge>` +
+      `</filter>`
+    );
+  }
+
+  return filterId;
+}
+
+/**
+ * Generate an SVG filter definition for an inner shadow effect.
+ * Returns the filter ID.
+ */
+function generateInnerShadowFilter(
+  effect: Effect,
+  ctx: RenderContext,
+): string {
+  const filterId = `inner-shadow-${ctx.shadowCounter++}`;
+  const x = effect.offset?.x ?? 0;
+  const y = effect.offset?.y ?? 0;
+  const blur = effect.radius ?? 0;
+  const color = colorToRgba(effect.color);
+  const stdDev = blur / 2;
+
+  // Inner shadow is created by:
+  // 1. Invert the alpha of the source
+  // 2. Apply blur and offset
+  // 3. Clip to original shape
+  ctx.defs.push(
+    `<filter id="${filterId}" x="-50%" y="-50%" width="200%" height="200%">` +
+    // Invert the source alpha to get the "outside" shape
+    `<feComponentTransfer in="SourceAlpha" result="inverse">` +
+    `<feFuncA type="table" tableValues="1 0" />` +
+    `</feComponentTransfer>` +
+    // Blur the inverted shape
+    `<feGaussianBlur in="inverse" stdDeviation="${stdDev}" result="blur" />` +
+    // Offset the blur
+    `<feOffset in="blur" dx="${x}" dy="${y}" result="offsetBlur" />` +
+    // Color the shadow
+    `<feFlood flood-color="${color}" result="color" />` +
+    `<feComposite in="color" in2="offsetBlur" operator="in" result="shadow" />` +
+    // Clip to original shape
+    `<feComposite in="shadow" in2="SourceAlpha" operator="in" result="innerShadow" />` +
+    // Merge with original
+    `<feMerge>` +
+    `<feMergeNode in="SourceGraphic" />` +
+    `<feMergeNode in="innerShadow" />` +
+    `</feMerge>` +
+    `</filter>`
+  );
+
+  return filterId;
+}
+
+/**
+ * Generate SVG filter(s) for a node's effects.
+ * Returns the filter ID to apply, or undefined if no filters needed.
+ */
+function generateEffectFilters(
+  node: SceneNode,
+  ctx: RenderContext,
+  includeShadows: boolean,
+): string | undefined {
+  if (!includeShadows || !node.effects || node.effects.length === 0) {
+    return undefined;
+  }
+
+  // Collect visible shadow effects
+  const dropShadows = node.effects.filter(
+    (e) => e.type === "DROP_SHADOW" && e.visible !== false
+  );
+  const innerShadows = node.effects.filter(
+    (e) => e.type === "INNER_SHADOW" && e.visible !== false
+  );
+
+  if (dropShadows.length === 0 && innerShadows.length === 0) {
+    return undefined;
+  }
+
+  // For simplicity, we'll handle the first drop shadow and first inner shadow
+  // A more complete implementation would combine multiple effects
+  if (dropShadows.length > 0) {
+    return generateDropShadowFilter(dropShadows[0], ctx);
+  }
+  if (innerShadows.length > 0) {
+    return generateInnerShadowFilter(innerShadows[0], ctx);
+  }
+
+  return undefined;
+}
 
 // ============================================================================
 // Text Rendering
@@ -353,11 +508,16 @@ function renderNode(
   const localTransform = getLocalTransform(sceneNode);
   const worldTransform = multiplyTransforms(parentTransform, localTransform);
 
+  // Generate shadow filter if this node has effects
+  const filterId = generateEffectFilters(sceneNode, ctx, options.includeShadows);
+
+  // Use a temporary output array if we need to wrap with a filter
+  const nodeOutput: string[] = filterId ? [] : output;
   let rendered = false;
 
   // Handle different node types
   if (node.type === "TEXT" && options.includeText) {
-    rendered = renderText(sceneNode, worldTransform, output);
+    rendered = renderText(sceneNode, worldTransform, nodeOutput);
   } else if (VECTOR_TYPES.has(node.type ?? "")) {
     if (options.includeStrokes && isStrokedVector(sceneNode)) {
       rendered = renderStrokedVector(
@@ -365,7 +525,7 @@ function renderNode(
         worldTransform,
         blobs,
         ctx,
-        output,
+        nodeOutput,
       );
     }
     if (!rendered && options.includeFills) {
@@ -374,7 +534,7 @@ function renderNode(
         worldTransform,
         blobs,
         ctx,
-        output,
+        nodeOutput,
       );
     }
   } else if (node.type === "RECTANGLE") {
@@ -388,7 +548,7 @@ function renderNode(
         worldTransform,
         images,
         options.includeImages,
-        output,
+        nodeOutput,
       );
     }
   } else if (CONTAINER_TYPES.has(node.type ?? "")) {
@@ -407,17 +567,20 @@ function renderNode(
           worldTransform,
           images,
           options.includeImages,
-          output,
+          nodeOutput,
         );
       }
     }
   }
 
   // Render children with mask support
+  // When we have a filter, children should render to nodeOutput so the filter applies to everything
+  const baseOutput = filterId ? nodeOutput : output;
+
   if (node.children) {
     const children = node.children as FigNode[];
     const childOutput: string[] = [];
-    const targetOutput = sceneNode.clipsContent ? childOutput : output;
+    const targetOutput = sceneNode.clipsContent ? childOutput : baseOutput;
 
     let index = 0;
     while (index < children.length) {
@@ -490,8 +653,13 @@ function renderNode(
       ctx.defs.push(
         `<clipPath id="${clipId}"><rect x="${p0.x}" y="${p0.y}" width="${sceneNode.width}" height="${sceneNode.height}" /></clipPath>`,
       );
-      output.push(`<g clip-path="url(#${clipId})">${childOutput.join("")}</g>`);
+      baseOutput.push(`<g clip-path="url(#${clipId})">${childOutput.join("")}</g>`);
     }
+  }
+
+  // If we have a filter, wrap all node content (including children) with the filter
+  if (filterId && nodeOutput.length > 0) {
+    output.push(`<g filter="url(#${filterId})">${nodeOutput.join("")}</g>`);
   }
 }
 
@@ -574,7 +742,7 @@ export function renderScreen(
   options: RenderScreenOptions = {},
 ): RenderScreenResult {
   const resolved = { ...DEFAULT_RENDER_OPTIONS, ...options };
-  const ctx: RenderContext = { defs: [], clipCounter: 0, warnings: [] };
+  const ctx: RenderContext = { defs: [], clipCounter: 0, shadowCounter: 0, warnings: [] };
 
   // Calculate bounds
   const bounds = collectBounds(node, IDENTITY_TRANSFORM);

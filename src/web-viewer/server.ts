@@ -231,12 +231,19 @@ async function loadFigFile(filePath: string) {
   return cached;
 }
 
+function jsonReplacer(_key: string, value: unknown): unknown {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  return value;
+}
+
 function sendJson(res: http.ServerResponse, data: unknown, status = 200) {
   res.writeHead(status, {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
   });
-  res.end(JSON.stringify(data));
+  res.end(JSON.stringify(data, jsonReplacer));
 }
 
 function sendError(res: http.ServerResponse, message: string, status = 500) {
@@ -466,7 +473,9 @@ export function createServer(options: ServerOptions = {}) {
 
     } catch (err) {
       console.error("Server error:", err);
-      sendError(res, err instanceof Error ? err.message : "Unknown error");
+      if (!res.headersSent) {
+        sendError(res, err instanceof Error ? err.message : "Unknown error");
+      }
     }
   });
 

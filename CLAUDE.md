@@ -175,20 +175,19 @@ Tested with:
 
 ## Next Steps
 
-1. **Enhance node property extraction** - Extract more useful properties from NodeChange
-   - Size and transform (for layout)
-   - Fills and strokes (for styling)
-   - Text content and styles
-   - Effects (shadows, blurs)
-
-2. **Improve layout inference**
+1. **Improve layout inference**
    - Validate with real design data
    - Detect flex/grid layouts
    - Infer spacing patterns
 
-3. **Better type mappings**
+2. **Better type mappings**
    - Handle more node types (COMPONENT, INSTANCE, etc.)
    - Extract component/instance relationships
+
+3. **Enhanced effect rendering**
+   - Support multiple shadows per node (currently renders first only)
+   - Combine drop shadows and inner shadows together
+   - Layer blur and background blur support in renderer
 
 ## Screen Renderer
 
@@ -208,6 +207,31 @@ SVG renderer for node subtrees.
 - Masks (`isMask` flag) and `clipsContent` are emitted as SVG clip paths
 - Images are embedded as base64 with proper scale mode handling
 - Full text styling support (font-style, letter-spacing, multi-line, alignment)
+- **Shadow rendering**: DROP_SHADOW and INNER_SHADOW effects are rendered using SVG filters
+  - `feDropShadow` for simple shadows without spread
+  - `feMorphology` + `feGaussianBlur` + `feOffset` for shadows with spread
+  - Inner shadows use inverted alpha + composite clipping
+  - Shadows are applied to entire node subtrees (node + children)
+  - Enabled by default via `includeShadows: true` option
+
+### Effect Support in MCP:
+- `get_node_details` and `get_node_by_id` return an `effects` array with structured data:
+  ```json
+  {
+    "effects": [
+      {
+        "type": "DROP_SHADOW",
+        "visible": true,
+        "color": "rgba(13, 197, 124, 1.000)",
+        "offset": { "x": 6, "y": 6 },
+        "radius": 0,
+        "spread": 0,
+        "blendMode": "NORMAL"
+      }
+    ]
+  }
+  ```
+- Use `includeEffects: false` to exclude effects from the response
 
 ### Testing:
 ```bash

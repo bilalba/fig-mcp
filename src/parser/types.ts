@@ -382,6 +382,17 @@ export interface InferredLayout {
   heightMode?: "fixed" | "hug" | "fill";
 }
 
+// Simplified effect representation for MCP responses
+export interface SimplifiedEffect {
+  type: EffectType;
+  visible: boolean;
+  color?: string;
+  offset?: { x: number; y: number };
+  radius: number;
+  spread?: number;
+  blendMode?: BlendMode;
+}
+
 // For MCP responses - simplified node representation
 export interface SimplifiedNode {
   id: string;
@@ -398,6 +409,7 @@ export interface SimplifiedNode {
     shadow?: string;
     blur?: string;
   };
+  effects?: SimplifiedEffect[];
   text?: {
     content: string;
     font: string;

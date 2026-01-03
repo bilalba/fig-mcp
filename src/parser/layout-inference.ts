@@ -13,6 +13,7 @@ import type {
   SceneNode,
   InferredLayout,
   SimplifiedNode,
+  SimplifiedEffect,
   Rect,
   Color,
   Paint,
@@ -280,6 +281,21 @@ export function inferLayoutFromChildren(children: SceneNode[]): InferredLayout |
 }
 
 /**
+ * Convert an effect to a simplified format for MCP output
+ */
+function simplifyEffect(effect: Effect): SimplifiedEffect {
+  return {
+    type: effect.type,
+    visible: effect.visible !== false,
+    color: effect.color ? colorToCSS(effect.color) : undefined,
+    offset: effect.offset ? { x: effect.offset.x, y: effect.offset.y } : undefined,
+    radius: effect.radius,
+    spread: effect.spread,
+    blendMode: effect.blendMode,
+  };
+}
+
+/**
  * Simplify a node for MCP output
  */
 export function simplifyNode(
@@ -289,11 +305,12 @@ export function simplifyNode(
   options: {
     includeStyles?: boolean;
     includeLayout?: boolean;
+    includeEffects?: boolean;
   } = {}
 ): SimplifiedNode | null {
   if (depth > maxDepth) return null;
 
-  const { includeStyles = true, includeLayout = true } = options;
+  const { includeStyles = true, includeLayout = true, includeEffects = true } = options;
 
   const sceneNode = node as SceneNode;
   const bounds = getNodeBounds(sceneNode);
@@ -373,6 +390,12 @@ export function simplifyNode(
     };
   }
 
+  // Build effects array
+  let effects: SimplifiedEffect[] | undefined;
+  if (includeEffects && sceneNode.effects && sceneNode.effects.length > 0) {
+    effects = sceneNode.effects.map(simplifyEffect);
+  }
+
   // Process children
   let children: SimplifiedNode[] | undefined;
   if (node.children && node.children.length > 0) {
@@ -390,6 +413,7 @@ export function simplifyNode(
   if (bounds) simplified.bounds = bounds;
   if (layout) simplified.layout = layout;
   if (style) simplified.style = style;
+  if (effects && effects.length > 0) simplified.effects = effects;
   if (text) simplified.text = text;
   if (children && children.length > 0) simplified.children = children;
 
