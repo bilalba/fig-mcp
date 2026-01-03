@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fig Viewer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header id="header">
+      <h1>Fig Viewer</h1>
+      <div id="file-info">
+        <span id="file-name">No file loaded</span>
+        <button id="open-btn" title="Open .fig file">Open File</button>
+      </div>
+    </header>
+
+    <!-- Main layout -->
+    <div id="main">
+      <!-- Left panel: Tree view -->
+      <aside id="tree-panel">
+        <!-- Pages list -->
+        <div id="pages-section">
+          <div id="pages-header">
+            <span>Pages</span>
+          </div>
+          <div id="pages-list"></div>
+        </div>
+
+        <!-- Tree with search -->
+        <div id="tree-section">
+          <div id="tree-header">
+            <input type="text" id="search" placeholder="Search nodes..." />
+          </div>
+          <div id="tree-container">
+            <div id="tree"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Canvas/Preview -->
+      <main id="canvas-panel">
+        <div id="canvas-toolbar">
+          <button id="zoom-in" title="Zoom in">+</button>
+          <span id="zoom-level">100%</span>
+          <button id="zoom-out" title="Zoom out">-</button>
+          <button id="zoom-fit" title="Fit to view">Fit</button>
+        </div>
+        <div id="canvas-container">
+          <div id="canvas">
+            <div id="canvas-placeholder">
+              Select a node to preview
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Right panel: Node details -->
+      <aside id="details-panel">
+        <div id="details-header">
+          <h2>Node Details</h2>
+        </div>
+        <div id="details-content">
+          <div id="no-selection">Select a node to see details</div>
+          <div id="node-details" class="hidden">
+            <div class="detail-section">
+              <div class="detail-row">
+                <label>ID</label>
+                <div class="detail-value">
+                  <code id="node-id"></code>
+                  <button id="copy-id" title="Copy ID">Copy</button>
+                </div>
+              </div>
+              <div class="detail-row">
+                <label>Type</label>
+                <span id="node-type"></span>
+              </div>
+              <div class="detail-row">
+                <label>Name</label>
+                <span id="node-name"></span>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Bounds</h3>
+              <div class="detail-grid">
+                <div class="detail-cell">
+                  <label>X</label>
+                  <span id="node-x">-</span>
+                </div>
+                <div class="detail-cell">
+                  <label>Y</label>
+                  <span id="node-y">-</span>
+                </div>
+                <div class="detail-cell">
+                  <label>W</label>
+                  <span id="node-width">-</span>
+                </div>
+                <div class="detail-cell">
+                  <label>H</label>
+                  <span id="node-height">-</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section" id="text-section">
+              <h3>Text</h3>
+              <div id="node-text"></div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Raw JSON</h3>
+              <pre id="node-json"></pre>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- File picker dialog (hidden by default) -->
+  <div id="file-dialog" class="dialog hidden">
+    <div class="dialog-content">
+      <h2>Open .fig File</h2>
+      <p>Enter the path to a .fig file on your local machine:</p>
+      <input type="text" id="file-path-input" placeholder="/path/to/design.fig" />
+      <div class="dialog-buttons">
+        <button id="cancel-open">Cancel</button>
+        <button id="confirm-open" class="primary">Open</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/viewer.js"></script>
+</body>
+</html>

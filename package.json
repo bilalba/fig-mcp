@@ -1,0 +1,47 @@
+{
+  "name": "fig-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for parsing .fig files",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "fig-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "tsx src/test-parser.ts",
+    "inspect": "tsx src/inspect-fig.ts",
+    "render-node": "tsx scripts/render-node.ts",
+    "viewer": "tsx src/web-viewer/build-client.ts && tsx src/web-viewer/server.ts",
+    "viewer:build": "tsx src/web-viewer/build-client.ts",
+    "viewer:dev": "tsx src/web-viewer/build-client.ts --watch & tsx src/web-viewer/server.ts"
+  },
+  "keywords": [
+    "fig",
+    "mcp",
+    "model-context-protocol",
+    "kiwi"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "fzstd": "^0.1.1",
+    "kiwi-schema": "^0.5.0",
+    "pako": "^2.1.0",
+    "pdfkit": "^0.17.2",
+    "svg-to-pdfkit": "^0.1.8"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "esbuild": "^0.24.0",
+    "@types/pako": "^2.0.4",
+    "@types/pdfkit": "^0.17.4",
+    "@types/svg-to-pdfkit": "^0.1.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

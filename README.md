@@ -1,10 +1,10 @@
 # Fig MCP Server
 
-An MCP (Model Context Protocol) server for parsing Figma `.fig` files. This enables AI assistants to understand and extract design information from Figma's native file format.
+An MCP (Model Context Protocol) server for parsing `.fig` files. This enables AI assistants to understand and extract design information from the `.fig` file format.
 
 ## Features
 
-- Parse `.fig` files without Figma API access
+- Parse `.fig` files without API access
 - Extract document structure, nodes, and hierarchy
 - Infer layout properties (flexbox-like direction, gap, padding, alignment)
 - Extract colors, text content, and styling information
@@ -100,7 +100,7 @@ fig-mcp/
 - The `.fig` format is undocumented and may change
 - Some complex properties (vector networks, gradients) may not be fully parsed
 - Blob data (embedded images in fills) is not decoded
-- This is for local `.fig` files only (use Figma API for cloud files)
+- This is for local `.fig` files only (use a cloud API for hosted files)
 
 ## License
 
@@ -110,4 +110,3 @@ MIT
 
 - [Kiwi](https://github.com/evanw/kiwi) by Evan Wallace - Binary format library
 - [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) - Protocol implementation
-# fig-mcp
