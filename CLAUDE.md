@@ -21,7 +21,16 @@ An MCP (Model Context Protocol) server for parsing `.fig` files. This enables AI
    - `inspect-fig.ts` - CLI tool for inspecting fig files during development
    - `test-parser.ts` - Local tool-flow test harness for image tools
 
-4. **Web Viewer** (`src/web-viewer/`)
+4. **Renderer** (`src/renderer/`)
+   - `render-screen.ts` - Main SVG renderer for node subtrees
+   - `render-types.ts` - TypeScript types for rendering
+   - `render-utils.ts` - Transform, path building, and XML utilities
+   - `paint-utils.ts` - Paint/fill/stroke handling
+   - `vector-renderer.ts` - Vector path decoding and rendering
+   - `screenshot.ts` - SVG to PNG conversion via resvg
+   - `index.ts` - Public exports for the renderer module
+
+5. **Web Viewer** (`src/web-viewer/`)
    - `server.ts` - HTTP server wrapping existing parser/renderer
    - `build-client.ts` - esbuild bundler for client code
    - `client/` - Browser-based UI (index.html, styles.css, viewer.ts)
@@ -193,7 +202,7 @@ Tested with:
 
 SVG renderer for node subtrees.
 
-- Code: `src/experimental/render-screen.ts`
+- Code: `src/renderer/render-screen.ts`
 - MCP tool: `render_screen` in `src/mcp/server.ts`
 - Debugging docs: `DEBUGGING.md`
 - Renderer docs: `RENDERER.md`
@@ -281,7 +290,7 @@ get_vector({ filePath: "/path/to.fig", nodeId: "457:1682", format: "png", width:
 ### Implementation
 
 - Code: `src/vector-export.ts`
-- Uses existing vector decoding from `src/experimental/vector-renderer.ts`
+- Uses existing vector decoding from `src/renderer/vector-renderer.ts`
 - PDF generation: `pdfkit` + `svg-to-pdfkit`
 - PNG rasterization: `@resvg/resvg-js`
 

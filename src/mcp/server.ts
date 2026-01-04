@@ -36,8 +36,7 @@ import {
   buildNodePathIndex,
 } from "../parser/index.js";
 import type { FigNode } from "../parser/types.js";
-import { renderScreen } from "../experimental/render-screen.js";
-import { generateScreenshot } from "../experimental/screenshot.js";
+import { renderScreen, generateScreenshot } from "../renderer/index.js";
 import { isVectorNode, exportVector, nodeToSvg } from "../vector-export.js";
 import type { VectorFormat } from "../vector-export.js";
 import { config } from "../shared-config.js";

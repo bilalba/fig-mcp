@@ -8,10 +8,15 @@ import { Resvg } from "@resvg/resvg-js";
 import PDFDocument from "pdfkit";
 import SVGtoPDF from "svg-to-pdfkit";
 import type { FigNode, SceneNode, VectorData, VectorPath } from "./parser/types.js";
-import type { TransformMatrix, BlobEntry, PathCommand } from "./experimental/render-types.js";
-import { buildSvgPath, computeCommandBounds } from "./experimental/render-utils.js";
-import { getPaints, getVisiblePaint, paintToColor } from "./experimental/paint-utils.js";
-import { renderScreen } from "./experimental/render-screen.js";
+import type { TransformMatrix, BlobEntry, PathCommand } from "./renderer/render-types.js";
+import {
+  buildSvgPath,
+  computeCommandBounds,
+  getPaints,
+  getVisiblePaint,
+  paintToColor,
+  renderScreen,
+} from "./renderer/index.js";
 
 // ============================================================================
 // Types

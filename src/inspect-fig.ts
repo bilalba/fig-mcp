@@ -25,8 +25,7 @@ import {
   countNodesByType,
 } from "./parser/index.js";
 
-async function main() {
-  const args = process.argv.slice(2);
+export async function runInspect(args: string[]): Promise<void> {
 
   if (args.length === 0) {
     console.log(`
@@ -152,4 +151,10 @@ Commands:
   }
 }
 
-main();
+// Run when executed directly
+const isDirectExecution = import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith('inspect-fig.ts');
+
+if (isDirectExecution) {
+  runInspect(process.argv.slice(2));
+}

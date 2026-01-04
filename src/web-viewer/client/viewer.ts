@@ -443,21 +443,20 @@ async function renderPreview(nodeId: string) {
 
     // Only reset zoom and fit for new render targets
     if (isNewRenderTarget) {
+      // Reset original dimensions for new SVG
+      originalSvgWidth = 0;
+      originalSvgHeight = 0;
       zoomLevel = 1;
-      updateZoom();
+      const fitsInViewport = applyZoom();
+      const container = elements.canvas.parentElement!;
 
       // Auto-fit if content is larger than viewport
-      const svgEl = elements.canvas.querySelector("svg:not(#hover-overlay)");
-      if (svgEl) {
-        const container = elements.canvas.parentElement!;
-        const containerRect = container.getBoundingClientRect();
-        const svgWidth = (svgEl as SVGSVGElement).width.baseVal.value || parseFloat(svgEl.getAttribute("width") || "100");
-        const svgHeight = (svgEl as SVGSVGElement).height.baseVal.value || parseFloat(svgEl.getAttribute("height") || "100");
-
-        // If content is larger than container, fit it
-        if (svgWidth > containerRect.width - 80 || svgHeight > containerRect.height - 80) {
-          zoomFit();
-        }
+      if (!fitsInViewport) {
+        zoomFit();
+      } else {
+        // Content fits - flexbox centers it, just reset scroll
+        container.scrollLeft = 0;
+        container.scrollTop = 0;
       }
     }
   } catch (err) {
@@ -471,63 +470,135 @@ async function renderPreview(nodeId: string) {
 }
 
 // Zoom controls
-function updateZoom() {
-  const container = elements.canvas.parentElement!;
 
-  // Save scroll position relative to content (as percentages)
-  const prevScrollLeft = container.scrollLeft;
-  const prevScrollTop = container.scrollTop;
-  const prevScrollWidth = container.scrollWidth;
-  const prevScrollHeight = container.scrollHeight;
-  const scrollXRatio = prevScrollWidth > container.clientWidth ? prevScrollLeft / (prevScrollWidth - container.clientWidth) : 0;
-  const scrollYRatio = prevScrollHeight > container.clientHeight ? prevScrollTop / (prevScrollHeight - container.clientHeight) : 0;
+// Store original SVG dimensions
+let originalSvgWidth = 0;
+let originalSvgHeight = 0;
+
+// Apply zoom level by modifying SVG dimensions directly (no CSS transform)
+// Returns true if content fits in viewport
+function applyZoom(): boolean {
+  const container = elements.canvas.parentElement!;
+  const containerRect = container.getBoundingClientRect();
 
   elements.zoomLevel.textContent = `${Math.round(zoomLevel * 100)}%`;
-  elements.canvas.style.transform = `scale(${zoomLevel})`;
 
-  // Update canvas size to allow proper scrolling at different zoom levels
+  // Remove CSS transform - we're zooming by changing SVG size
+  elements.canvas.style.transform = "";
+
   const svg = elements.canvas.querySelector("svg:not(#hover-overlay)") as SVGSVGElement | null;
   if (svg) {
-    const containerRect = container.getBoundingClientRect();
-    const svgWidth = svg.width.baseVal.value || parseFloat(svg.getAttribute("width") || "100");
-    const svgHeight = svg.height.baseVal.value || parseFloat(svg.getAttribute("height") || "100");
-    const padding = 80; // padding on both sides
+    // Store original dimensions on first call
+    if (originalSvgWidth === 0) {
+      originalSvgWidth = svg.width.baseVal.value || parseFloat(svg.getAttribute("width") || "100");
+      originalSvgHeight = svg.height.baseVal.value || parseFloat(svg.getAttribute("height") || "100");
+    }
 
-    const scaledWidth = (svgWidth + padding) * zoomLevel;
-    const scaledHeight = (svgHeight + padding) * zoomLevel;
+    // Scale SVG dimensions directly
+    const scaledWidth = originalSvgWidth * zoomLevel;
+    const scaledHeight = originalSvgHeight * zoomLevel;
+    svg.setAttribute("width", String(scaledWidth));
+    svg.setAttribute("height", String(scaledHeight));
 
-    // Only set explicit dimensions if content exceeds container (enables scrolling)
-    // Otherwise, let min-width/min-height + flexbox handle centering
-    if (scaledWidth > containerRect.width || scaledHeight > containerRect.height) {
-      elements.canvas.style.width = `${scaledWidth}px`;
-      elements.canvas.style.height = `${scaledHeight}px`;
-    } else {
+    // Also update hover overlay if it exists
+    const overlay = elements.canvas.querySelector("#hover-overlay") as SVGSVGElement | null;
+    if (overlay) {
+      overlay.setAttribute("width", String(scaledWidth));
+      overlay.setAttribute("height", String(scaledHeight));
+    }
+
+    const padding = 80;
+    const contentWidth = scaledWidth + padding;
+    const contentHeight = scaledHeight + padding;
+
+    // Content fits if the scaled size fits in container
+    const fitsInViewport = contentWidth <= containerRect.width &&
+                           contentHeight <= containerRect.height;
+
+    if (fitsInViewport) {
+      // Content fits - clear dimensions, let flexbox center it
       elements.canvas.style.width = "";
       elements.canvas.style.height = "";
+    } else {
+      // Content larger - set explicit dimensions for proper scrolling
+      elements.canvas.style.width = `${contentWidth}px`;
+      elements.canvas.style.height = `${contentHeight}px`;
     }
-  }
 
-  // Restore scroll position proportionally
-  requestAnimationFrame(() => {
-    const newScrollWidth = container.scrollWidth;
-    const newScrollHeight = container.scrollHeight;
-    if (newScrollWidth > container.clientWidth) {
-      container.scrollLeft = scrollXRatio * (newScrollWidth - container.clientWidth);
-    }
-    if (newScrollHeight > container.clientHeight) {
-      container.scrollTop = scrollYRatio * (newScrollHeight - container.clientHeight);
-    }
-  });
+    return fitsInViewport;
+  }
+  return true;
+}
+
+// Zoom toward a focal point, keeping that point stationary on screen
+function zoomTo(newZoom: number, focalPoint?: { x: number; y: number }) {
+  const container = elements.canvas.parentElement!;
+  const containerRect = container.getBoundingClientRect();
+  const oldZoom = zoomLevel;
+
+  // Use provided focal point (relative to container), or center of viewport
+  const focal = focalPoint || {
+    x: containerRect.width / 2,
+    y: containerRect.height / 2,
+  };
+
+  // Calculate the content position under the focal point before zoom
+  // Account for scroll and padding (40px on each side)
+  const padding = 40;
+  const contentX = (container.scrollLeft + focal.x - padding) / oldZoom;
+  const contentY = (container.scrollTop + focal.y - padding) / oldZoom;
+
+  // Apply new zoom level
+  zoomLevel = newZoom;
+  const fitsInViewport = applyZoom();
+
+  if (fitsInViewport) {
+    // Content fits - flexbox handles centering, reset scroll
+    container.scrollLeft = 0;
+    container.scrollTop = 0;
+  } else {
+    // Calculate new scroll to keep the same content point under focal point
+    const newScrollLeft = contentX * newZoom + padding - focal.x;
+    const newScrollTop = contentY * newZoom + padding - focal.y;
+
+    // Clamp scroll to valid range
+    const maxScrollX = Math.max(0, container.scrollWidth - container.clientWidth);
+    const maxScrollY = Math.max(0, container.scrollHeight - container.clientHeight);
+
+    container.scrollLeft = Math.max(0, Math.min(maxScrollX, newScrollLeft));
+    container.scrollTop = Math.max(0, Math.min(maxScrollY, newScrollTop));
+  }
+}
+
+// Legacy updateZoom for cases that don't need focal point (initial render, etc.)
+function updateZoom() {
+  applyZoom();
 }
 
 function zoomIn() {
-  zoomLevel = Math.min(zoomLevel * 1.25, 10);
-  updateZoom();
+  const newZoom = Math.min(zoomLevel * 1.15, 10);
+  zoomTo(newZoom);
 }
 
 function zoomOut() {
-  zoomLevel = Math.max(zoomLevel / 1.25, 0.1);
-  updateZoom();
+  const newZoom = Math.max(zoomLevel / 1.15, 0.1);
+  zoomTo(newZoom);
+}
+
+// Smooth zoom with smaller increments for wheel/pinch
+function zoomByDelta(delta: number, focalPoint?: { x: number; y: number }) {
+  // Use very small increments for smooth zooming
+  // Clamp delta to avoid extreme jumps from trackpad acceleration
+  const clampedDelta = Math.max(-100, Math.min(100, delta));
+  const factor = 1 + Math.abs(clampedDelta) * 0.003;
+
+  let newZoom: number;
+  if (clampedDelta < 0) {
+    newZoom = Math.min(zoomLevel * factor, 10);
+  } else {
+    newZoom = Math.max(zoomLevel / factor, 0.1);
+  }
+  zoomTo(newZoom, focalPoint);
 }
 
 function zoomFit() {
@@ -544,11 +615,36 @@ function zoomFit() {
   const scaleY = (containerRect.height - padding) / svgHeight;
   zoomLevel = Math.min(scaleX, scaleY, 1);
 
-  updateZoom();
+  const fitsInViewport = applyZoom();
 
-  // Reset scroll position to top-left
+  // Reset scroll - flexbox handles centering when content fits
   container.scrollLeft = 0;
   container.scrollTop = 0;
+}
+
+// Center the scroll position to show the content in the middle of the viewport
+function centerScrollOnContent() {
+  const container = elements.canvas.parentElement!;
+  const canvas = elements.canvas;
+
+  // Get the actual scrollable dimensions
+  const scrollWidth = container.scrollWidth;
+  const scrollHeight = container.scrollHeight;
+  const viewportWidth = container.clientWidth;
+  const viewportHeight = container.clientHeight;
+
+  // Center the scroll position
+  if (scrollWidth > viewportWidth) {
+    container.scrollLeft = (scrollWidth - viewportWidth) / 2;
+  } else {
+    container.scrollLeft = 0;
+  }
+
+  if (scrollHeight > viewportHeight) {
+    container.scrollTop = (scrollHeight - viewportHeight) / 2;
+  } else {
+    container.scrollTop = 0;
+  }
 }
 
 // ============================================================================
@@ -892,15 +988,21 @@ function init() {
     }
   });
 
-  // Mouse wheel zoom
+  // Mouse wheel zoom (with smooth micro-increments and focal point)
   elements.canvas.parentElement?.addEventListener("wheel", (e) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
-      if (e.deltaY < 0) {
-        zoomIn();
-      } else {
-        zoomOut();
-      }
+
+      // Get mouse position relative to container for focal point
+      const container = elements.canvas.parentElement!;
+      const containerRect = container.getBoundingClientRect();
+      const focalPoint = {
+        x: e.clientX - containerRect.left,
+        y: e.clientY - containerRect.top,
+      };
+
+      // Use deltaY directly for smooth, proportional zooming
+      zoomByDelta(e.deltaY, focalPoint);
     }
   }, { passive: false });
 

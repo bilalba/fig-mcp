@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { writeFile } from "fs/promises";
 import { parseFigFile, formatGUID } from "../src/parser/index.js";
-import { renderScreen } from "../src/experimental/render-screen.js";
+import { renderScreen } from "../src/renderer/index.js";
 
 function printUsage(): void {
   console.log(

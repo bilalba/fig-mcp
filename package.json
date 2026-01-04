@@ -1,14 +1,43 @@
 {
-  "name": "fig-mcp",
-  "version": "1.0.0",
+  "name": "@bilalba/fig-mcp",
+  "version": "1.1.0",
   "description": "MCP server for parsing .fig files",
+  "keywords": [
+    "fig",
+    "mcp",
+    "model-context-protocol",
+    "kiwi"
+  ],
+  "homepage": "https://github.com/bilalba/fig-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/bilalba/fig-mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bilalba/fig-mcp.git"
+  },
+  "license": "MIT",
+  "author": "bilal",
   "type": "module",
   "main": "dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
-    "fig-mcp": "./dist/index.js"
+    "fig-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "directories": {
+    "test": "tests"
   },
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "tsx src/test-parser.ts",
@@ -18,29 +47,22 @@
     "viewer:build": "tsx src/web-viewer/build-client.ts",
     "viewer:dev": "tsx src/web-viewer/build-client.ts --watch & tsx src/web-viewer/server.ts"
   },
-  "keywords": [
-    "fig",
-    "mcp",
-    "model-context-protocol",
-    "kiwi"
-  ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
     "@resvg/resvg-js": "^2.6.2",
     "fzstd": "^0.1.1",
     "kiwi-schema": "^0.5.0",
+    "open": "^11.0.0",
     "pako": "^2.1.0",
     "pdfkit": "^0.17.2",
     "svg-to-pdfkit": "^0.1.8"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
-    "esbuild": "^0.24.0",
     "@types/pako": "^2.0.4",
     "@types/pdfkit": "^0.17.4",
     "@types/svg-to-pdfkit": "^0.1.3",
+    "esbuild": "^0.24.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }

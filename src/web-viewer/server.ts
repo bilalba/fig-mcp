@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { parseFigFile, buildNodeIdIndex } from "../parser/index.js";
 import { formatGUID, parseGUID } from "../parser/kiwi-parser.js";
-import { renderScreen } from "../experimental/render-screen.js";
+import { renderScreen } from "../renderer/index.js";
 import type { FigNode, SceneNode } from "../parser/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -480,14 +480,16 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   return {
-    start() {
+    start(onReady?: (url: string) => void) {
       server.listen(port, () => {
-        console.log(`\nFig Viewer running at http://localhost:${port}`);
+        const url = `http://localhost:${port}`;
+        console.log(`\nFig Viewer running at ${url}`);
         if (currentFile) {
           console.log(`Loaded: ${currentFile}`);
         } else {
           console.log("No file loaded. Use the UI to open a .fig file.");
         }
+        onReady?.(url);
       });
     },
     close() {

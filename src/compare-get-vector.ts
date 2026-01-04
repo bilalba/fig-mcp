@@ -4,7 +4,7 @@
 import { readFigFile, buildNodeIdIndex } from "./parser/index.js";
 import { parseCanvasFig, extractDocumentTree, formatGUID } from "./parser/kiwi-parser.js";
 import { nodeToSvg } from "./vector-export.js";
-import { renderScreen } from "./experimental/render-screen.js";
+import { renderScreen } from "./renderer/index.js";
 import type { FigNode } from "./parser/types.js";
 import { writeFileSync } from "fs";
 

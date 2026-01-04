@@ -324,8 +324,6 @@ button.primary:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  transform-origin: center center;
-  transition: transform 0.1s ease-out;
   padding: 40px;
   box-sizing: border-box;
   position: relative;

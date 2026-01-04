@@ -3,7 +3,7 @@
  */
 import { readFigFile } from "./parser/index.js";
 import { parseCanvasFig, formatGUID, extractDocumentTree } from "./parser/kiwi-parser.js";
-import { renderScreen } from "./experimental/render-screen.js";
+import { renderScreen } from "./renderer/index.js";
 import type { FigNode } from "./parser/types.js";
 import { writeFileSync } from "fs";
 
