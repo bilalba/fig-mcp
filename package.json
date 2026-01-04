@@ -1,6 +1,6 @@
 {
   "name": "@bilalba/fig-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "MCP server for parsing .fig files",
   "keywords": [
     "fig",
