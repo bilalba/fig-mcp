@@ -510,6 +510,16 @@ function convertToFigNode(raw: unknown): FigNode | null {
     }
   }
 
+  // Preserve symbolData for INSTANCE nodes (references the component/symbol this instance is based on)
+  const symbolData = obj["symbolData"] as Record<string, unknown> | undefined;
+  if (symbolData) {
+    const symbolIdRaw = symbolData["symbolID"] as Record<string, unknown> | undefined;
+    nodeRecord["symbolData"] = {
+      symbolID: symbolIdRaw ? parseGUID(symbolIdRaw) : undefined,
+      symbolOverrides: symbolData["symbolOverrides"],
+    };
+  }
+
   // Handle children
   const children = obj["children"] as unknown[];
   if (Array.isArray(children)) {

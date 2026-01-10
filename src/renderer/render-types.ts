@@ -2,6 +2,8 @@
  * Shared types for the SVG renderer modules
  */
 
+import type { FigNode } from "../parser/types.js";
+
 export type TransformMatrix = {
   a: number;
   b: number;
@@ -36,6 +38,10 @@ export type RenderScreenOptions = {
   includeShadows?: boolean;
   background?: string;
   scale?: number;
+  /** Node index for resolving INSTANCE references. Required to render INSTANCE children. */
+  nodeIndex?: Map<string, FigNode>;
+  /** Raw node index for accessing symbolOverrides data. Required for INSTANCE content resolution. */
+  rawNodeIndex?: Map<string, Record<string, unknown>>;
 };
 
 export type RenderScreenResult = {
@@ -45,7 +51,7 @@ export type RenderScreenResult = {
   warnings: string[];
 };
 
-export const DEFAULT_RENDER_OPTIONS: Required<RenderScreenOptions> = {
+export const DEFAULT_RENDER_OPTIONS: Required<Omit<RenderScreenOptions, 'nodeIndex' | 'rawNodeIndex'>> & Pick<RenderScreenOptions, 'nodeIndex' | 'rawNodeIndex'> = {
   maxDepth: 200,
   includeText: true,
   includeFills: true,
@@ -54,6 +60,8 @@ export const DEFAULT_RENDER_OPTIONS: Required<RenderScreenOptions> = {
   includeShadows: true,
   background: "",
   scale: 1,
+  nodeIndex: undefined,
+  rawNodeIndex: undefined,
 };
 
 export const IDENTITY_TRANSFORM: TransformMatrix = {

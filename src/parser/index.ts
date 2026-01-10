@@ -17,6 +17,7 @@ export * from "./types.js";
 export * from "./fig-reader.js";
 export * from "./kiwi-parser.js";
 export * from "./layout-inference.js";
+export * from "./instance-resolver.js";
 
 /**
  * Build an O(1) GUID lookup index for a document tree.
@@ -34,6 +35,28 @@ export function buildNodeIdIndex(document: FigNode): Map<string, FigNode> {
   }
 
   walk(document);
+  return index;
+}
+
+/**
+ * Build an index of raw nodeChanges by GUID for accessing raw override data.
+ */
+export function buildRawNodeIndex(rawMessage: Record<string, unknown>): Map<string, Record<string, unknown>> {
+  const index = new Map<string, Record<string, unknown>>();
+  const nodeChanges = rawMessage.nodeChanges as unknown[] | undefined;
+
+  if (!nodeChanges) return index;
+
+  for (const change of nodeChanges) {
+    if (!change || typeof change !== "object") continue;
+    const node = change as Record<string, unknown>;
+    const guid = node.guid as Record<string, number> | undefined;
+    if (guid) {
+      const key = `${guid.sessionID}:${guid.localID}`;
+      index.set(key, node);
+    }
+  }
+
   return index;
 }
 

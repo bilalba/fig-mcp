@@ -19,7 +19,10 @@ import type {
   DerivedTextData,
   Effect,
   Color,
+  GUID,
 } from "../parser/types.js";
+import { formatGUID } from "../parser/kiwi-parser.js";
+import { extractInstanceContent, resolveInstanceChildren, type ResolvedInstanceContent } from "../parser/instance-resolver.js";
 import type {
   TransformMatrix,
   BlobEntry,
@@ -491,11 +494,111 @@ function renderMaskContent(
   return `<rect x="${pos.x}" y="${pos.y}" width="${width}" height="${height}" fill="white" />`;
 }
 
+// ============================================================================
+// Instance Content Rendering
+// ============================================================================
+
+/**
+ * Convert Color to CSS rgba string
+ */
+function colorToCss(color: Color | undefined): string | undefined {
+  if (!color) return undefined;
+  const r = Math.round(color.r * 255);
+  const g = Math.round(color.g * 255);
+  const b = Math.round(color.b * 255);
+  const a = color.a ?? 1;
+  return `rgba(${r},${g},${b},${a.toFixed(3)})`;
+}
+
+/**
+ * Render content extracted from an INSTANCE's symbolOverrides.
+ * This renders text and visual elements based on the override data.
+ */
+function renderInstanceContent(
+  resolved: ResolvedInstanceContent,
+  transform: TransformMatrix,
+  options: ResolvedOptions,
+  output: string[],
+): boolean {
+  const instance = resolved.instance as SceneNode;
+  const width = instance.width ?? 0;
+  const height = instance.height ?? 0;
+
+  if (width === 0 || height === 0) return false;
+
+  const pos = transformPoint(0, 0, transform);
+  let rendered = false;
+
+  // Render text content from overrides
+  // We arrange text vertically within the instance bounds
+  if (options.includeText && resolved.textContent.length > 0) {
+    let yOffset = 0;
+    const lineHeight = 20; // Default line height
+
+    for (const textItem of resolved.textContent) {
+      const fillColor = colorToCss(textItem.fillColor) ?? "#fff";
+      const fontSize = textItem.fontSize ?? 14;
+      const fontFamily = escapeXml(textItem.fontFamily ?? "Inter");
+
+      const textY = pos.y + yOffset + fontSize;
+
+      output.push(
+        `<text x="${pos.x}" y="${textY}" ` +
+        `font-family="${fontFamily}" font-size="${fontSize}" ` +
+        `fill="${fillColor}" dominant-baseline="text-before-edge">` +
+        `${escapeXml(textItem.text)}</text>`
+      );
+
+      yOffset += lineHeight;
+      rendered = true;
+    }
+  }
+
+  // Render rectangle elements
+  if (options.includeFills) {
+    for (const el of resolved.elements) {
+      if (el.type === "rectangle" && el.fillColor) {
+        const elSize = el.size ?? { x: width, y: 30 };
+        const fillColor = colorToCss(el.fillColor);
+        const strokeColor = el.strokeColor ? colorToCss(el.strokeColor) : undefined;
+        const radius = el.cornerRadius ?? 0;
+
+        const attrs: string[] = [
+          `x="${pos.x}"`,
+          `y="${pos.y}"`,
+          `width="${elSize.x}"`,
+          `height="${elSize.y}"`,
+        ];
+
+        if (fillColor) attrs.push(`fill="${fillColor}"`);
+        else attrs.push(`fill="none"`);
+
+        if (strokeColor) {
+          attrs.push(`stroke="${strokeColor}"`);
+          attrs.push(`stroke-width="1"`);
+        }
+
+        if (radius > 0) {
+          attrs.push(`rx="${radius}"`);
+          attrs.push(`ry="${radius}"`);
+        }
+
+        output.push(`<rect ${attrs.join(" ")} />`);
+        rendered = true;
+      }
+    }
+  }
+
+  return rendered;
+}
+
+type ResolvedOptions = Required<Omit<RenderScreenOptions, 'nodeIndex' | 'rawNodeIndex'>> & Pick<RenderScreenOptions, 'nodeIndex' | 'rawNodeIndex'>;
+
 function renderNode(
   node: FigNode,
   parentTransform: TransformMatrix,
   depth: number,
-  options: Required<RenderScreenOptions>,
+  options: ResolvedOptions,
   images: Map<string, Uint8Array> | undefined,
   blobs: BlobEntry[] | undefined,
   ctx: RenderContext,
@@ -577,8 +680,52 @@ function renderNode(
   // When we have a filter, children should render to nodeOutput so the filter applies to everything
   const baseOutput = filterId ? nodeOutput : output;
 
-  if (node.children) {
-    const children = node.children as FigNode[];
+  // For INSTANCE nodes, resolve children from SYMBOL definition
+  // The SYMBOL provides proper layout structure; symbolOverrides have values but no positions
+  let resolvedChildren: FigNode[] | undefined = node.children as FigNode[] | undefined;
+  if (
+    node.type === "INSTANCE" &&
+    (!node.children || node.children.length === 0) &&
+    sceneNode.symbolData?.symbolID &&
+    options.nodeIndex
+  ) {
+    const symbolId = formatGUID(sceneNode.symbolData.symbolID as GUID | null);
+    const symbolNode = options.nodeIndex.get(symbolId);
+    if (symbolNode?.children) {
+      if (options.rawNodeIndex) {
+        const resolved = resolveInstanceChildren(node, symbolNode, options.rawNodeIndex, options.nodeIndex);
+        if (resolved && resolved.length > 0) {
+          resolvedChildren = resolved;
+        } else {
+          resolvedChildren = symbolNode.children as FigNode[];
+        }
+      } else {
+        resolvedChildren = symbolNode.children as FigNode[];
+      }
+    }
+  }
+
+  // If no SYMBOL children could be resolved, try rendering extracted instance content
+  // This is a fallback that stacks text vertically (not ideal but better than nothing)
+  let instanceContentRendered = false;
+  if (
+    node.type === "INSTANCE" &&
+    (!resolvedChildren || resolvedChildren.length === 0) &&
+    sceneNode.symbolData?.symbolID &&
+    options.rawNodeIndex
+  ) {
+    const nodeId = formatGUID(node.guid);
+    const rawNode = options.rawNodeIndex.get(nodeId);
+    if (rawNode) {
+      const resolved = extractInstanceContent(node, rawNode);
+      if (resolved && (resolved.textContent.length > 0 || resolved.elements.length > 0)) {
+        instanceContentRendered = renderInstanceContent(resolved, worldTransform, options, nodeOutput);
+      }
+    }
+  }
+
+  if (resolvedChildren && resolvedChildren.length > 0) {
+    const children = resolvedChildren;
     const childOutput: string[] = [];
     const targetOutput = sceneNode.clipsContent ? childOutput : baseOutput;
 

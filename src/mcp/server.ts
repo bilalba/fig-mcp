@@ -34,6 +34,9 @@ import {
   formatGUID,
   buildNodeIdIndex,
   buildNodePathIndex,
+  buildRawNodeIndex,
+  extractInstanceContent,
+  getInstanceTextList,
 } from "../parser/index.js";
 import type { FigNode } from "../parser/types.js";
 import { renderScreen, generateScreenshot } from "../renderer/index.js";
@@ -52,6 +55,7 @@ const fileCache = new Map<
     version: number;
     nodeIdIndex: Map<string, FigNode>;
     nodePathIndex: Map<string, string>;
+    rawNodeIndex: Map<string, Record<string, unknown>>;
     blobs?: Array<{ bytes: Uint8Array }>;
   }
 >();
@@ -279,6 +283,7 @@ export async function getOrParseFigFile(filePath: string) {
     const parsed = await parseFigFile(filePath);
     const nodeIdIndex = buildNodeIdIndex(parsed.document);
     const nodePathIndex = buildNodePathIndex(parsed.document);
+    const rawNodeIndex = parsed.rawMessage ? buildRawNodeIndex(parsed.rawMessage) : new Map();
     fileCache.set(filePath, {
       document: parsed.document,
       meta: parsed.meta,
@@ -287,6 +292,7 @@ export async function getOrParseFigFile(filePath: string) {
       version: parsed.version,
       nodeIdIndex,
       nodePathIndex,
+      rawNodeIndex,
       blobs: parsed.blobs,
     });
   }
@@ -1085,7 +1091,7 @@ export function createServer(): Server {
           // Validate maxDepth
           const safeMaxDepth = Math.min(Math.max(maxDepth, 0), 10);
 
-          const { nodeIdIndex, nodePathIndex } = await getOrParseFigFile(filePath);
+          const { nodeIdIndex, nodePathIndex, rawNodeIndex } = await getOrParseFigFile(filePath);
 
           const normalizedId = normalizeNodeId(nodeId);
           const node = nodeIdIndex.get(normalizedId);
@@ -1121,10 +1127,26 @@ export function createServer(): Server {
             ? extractImageReferences(node, nodePath)
             : undefined;
 
+          // For INSTANCE nodes, extract text content from symbolOverrides
+          let instanceContent: { textContent: string[]; symbolId: string } | undefined;
+          if (node.type === "INSTANCE") {
+            const rawNode = rawNodeIndex.get(normalizedId);
+            if (rawNode) {
+              const resolved = extractInstanceContent(node, rawNode);
+              if (resolved && resolved.textContent.length > 0) {
+                instanceContent = {
+                  symbolId: resolved.symbolId,
+                  textContent: getInstanceTextList(resolved),
+                };
+              }
+            }
+          }
+
           const response = {
             ...simplified,
             nodePath,
             ...(imageRefs && imageRefs.length > 0 && { imageRefs }),
+            ...(instanceContent && { instanceContent }),
           };
 
           return {
@@ -1247,7 +1269,7 @@ export function createServer(): Server {
             filePath: string;
             nodePath?: string;
           };
-          const { document } = await getOrParseFigFile(filePath);
+          const { document, nodeIdIndex, rawNodeIndex } = await getOrParseFigFile(filePath);
 
           let startNode: FigNode = document;
           if (nodePath) {
@@ -1263,17 +1285,36 @@ export function createServer(): Server {
             }
           }
 
+          // Get text from TEXT nodes
           const textNodes = findNodesByType(startNode, "TEXT");
           const texts = textNodes.map((n) => ({
             name: n.name,
             content: (n as unknown as { characters?: string }).characters,
           }));
 
+          // Also extract text from INSTANCE nodes (symbolOverrides)
+          const instanceTexts: Array<{ name: string; instanceOf: string; content: string[] }> = [];
+          const instanceNodes = findNodesByType(startNode, "INSTANCE");
+          for (const instNode of instanceNodes) {
+            const nodeId = formatGUID(instNode.guid);
+            const rawNode = rawNodeIndex.get(nodeId);
+            if (rawNode) {
+              const resolved = extractInstanceContent(instNode, rawNode);
+              if (resolved && resolved.textContent.length > 0) {
+                instanceTexts.push({
+                  name: instNode.name,
+                  instanceOf: resolved.symbolId,
+                  content: getInstanceTextList(resolved),
+                });
+              }
+            }
+          }
+
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify({ texts }, null, 2),
+                text: JSON.stringify({ texts, instanceTexts }, null, 2),
               },
             ],
           };
@@ -1604,7 +1645,7 @@ export function createServer(): Server {
             nodeId: string;
             options?: Record<string, unknown>;
           };
-          const { nodeIdIndex, images, blobs } = await getOrParseFigFile(filePath);
+          const { nodeIdIndex, rawNodeIndex, images, blobs } = await getOrParseFigFile(filePath);
 
           const normalizedId = normalizeNodeId(nodeId);
           const node = nodeIdIndex.get(normalizedId);
@@ -1634,6 +1675,8 @@ export function createServer(): Server {
               typeof options?.includeShadows === "boolean" ? options.includeShadows : undefined,
             background: typeof options?.background === "string" ? options.background : undefined,
             scale: typeof options?.scale === "number" ? options.scale : undefined,
+            nodeIndex: nodeIdIndex,
+            rawNodeIndex,
           });
 
           // Convert SVG to PNG

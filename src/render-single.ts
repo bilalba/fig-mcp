@@ -1,13 +1,13 @@
 /**
  * Render a single node by ID
  */
-import { readFigFile } from "./parser/index.js";
+import { readFigFile, buildRawNodeIndex } from "./parser/index.js";
 import { parseCanvasFig, formatGUID, extractDocumentTree } from "./parser/kiwi-parser.js";
 import { renderScreen } from "./renderer/index.js";
 import type { FigNode } from "./parser/types.js";
 import { writeFileSync } from "fs";
 
-const FILE_PATH = "/Users/billy/Downloads/AutoDevice (Copy).fig";
+const FILE_PATH = "/Users/billy/repo/fig-mcp/Autodevice.fig";
 const NODE_ID = process.argv[2] || "457:1607";
 
 async function render() {
@@ -32,6 +32,9 @@ async function render() {
   }
   indexNode(doc);
 
+  // Build raw node index for INSTANCE content resolution
+  const rawNodeIndex = buildRawNodeIndex(parsed.message);
+
   const node = nodeIndex.get(NODE_ID);
   if (!node) {
     console.log("Node not found:", NODE_ID);
@@ -48,6 +51,8 @@ async function render() {
     includeStrokes: true,
     includeText: true,
     background: "#1a1a1a",
+    nodeIndex,
+    rawNodeIndex,
   });
 
   console.log("Result:", result.width, "x", result.height);

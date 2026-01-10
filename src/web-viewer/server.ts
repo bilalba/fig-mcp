@@ -412,6 +412,8 @@ export function createServer(options: ServerOptions = {}) {
             includeText: true,
             includeFills: true,
             includeStrokes: true,
+            nodeIndex: cached.nodeIndex,
+            rawNodeIndex: cached.rawNodeIndex,
           }
         );
 

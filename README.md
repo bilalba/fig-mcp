@@ -16,19 +16,10 @@ npx @bilalba/fig-mcp --help
 
 ## Quick Start
 
-### As MCP Server (for Claude Desktop)
+### Add to Claude
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
-
-```json
-{
-  "mcpServers": {
-    "fig-mcp": {
-      "command": "npx",
-      "args": ["@bilalba/fig-mcp"]
-    }
-  }
-}
+```bash
+claude mcp add fig-mcp -- npx @bilalba/fig-mcp
 ```
 
 Then ask Claude to parse your `.fig` files:

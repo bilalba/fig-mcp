@@ -323,6 +323,12 @@ export interface SceneNode extends BaseNode {
   mainComponent?: GUID;
   overrides?: Record<string, unknown>;
 
+  // Instance/Symbol data (for INSTANCE nodes)
+  symbolData?: {
+    symbolID?: GUID;
+    symbolOverrides?: unknown[];
+  };
+
   // Vector properties
   vectorNetwork?: unknown;
   vectorPaths?: unknown;
