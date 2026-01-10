@@ -54,6 +54,7 @@ type OverrideData = {
   fillPaints?: unknown[];
   strokePaints?: unknown[];
   cornerRadius?: number;
+  visible?: boolean;
   rectangleCornerRadius?: {
     topLeft?: number;
     topRight?: number;
@@ -100,6 +101,15 @@ function guidPathToString(path: unknown): string {
       return `${guid.sessionID}:${guid.localID}`;
     })
     .join(">");
+}
+
+function parseGUID(value: unknown): GUID | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const guid = value as Record<string, unknown>;
+  const sessionID = guid.sessionID;
+  const localID = guid.localID;
+  if (typeof sessionID !== "number" || typeof localID !== "number") return undefined;
+  return { sessionID, localID };
 }
 
 function buildOverridePathMap(
@@ -225,7 +235,7 @@ function buildOverrideData(
         const textValue = value?.textValue as Record<string, unknown> | undefined;
         const characters = textValue?.characters as string | undefined;
         const boolValue = value?.boolValue as boolean | undefined;
-        const guidValue = value?.guidValue as Record<string, number> | undefined;
+        const guidValue = parseGUID(value?.guidValue);
         const def = a.defID as Record<string, number> | undefined;
         if (def) {
           if (!entry.componentPropAssignments) entry.componentPropAssignments = [];
@@ -233,7 +243,7 @@ function buildOverrideData(
             defId: `${def.sessionID}:${def.localID}`,
             characters: characters,
             visible: typeof boolValue === "boolean" ? boolValue : undefined,
-            symbolId: guidValue ? (guidValue as GUID) : undefined,
+            symbolId: guidValue,
           });
         } else if (characters) {
           entry.characters = characters;
@@ -330,20 +340,30 @@ function applyOverrideToNode(node: SceneNode, override: OverrideData): void {
     override.lineHeight?.value !== undefined ||
     override.textAutoResize
   ) {
-    const style = { ...(node.style ?? {}) } as Record<string, unknown>;
+    const style: Partial<TextStyle> = { ...(node.style ?? {}) };
     if (override.fontName?.family) {
       style.fontFamily = override.fontName.family;
     }
     if (override.fontSize !== undefined) {
       style.fontSize = override.fontSize;
     }
-    if (override.textAlignHorizontal) {
+    if (
+      override.textAlignHorizontal === "LEFT" ||
+      override.textAlignHorizontal === "CENTER" ||
+      override.textAlignHorizontal === "RIGHT" ||
+      override.textAlignHorizontal === "JUSTIFIED"
+    ) {
       style.textAlignHorizontal = override.textAlignHorizontal;
     }
     if (override.lineHeight?.value !== undefined) {
       style.lineHeightPx = override.lineHeight.value;
     }
-    if (override.textAutoResize) {
+    if (
+      override.textAutoResize === "NONE" ||
+      override.textAutoResize === "HEIGHT" ||
+      override.textAutoResize === "WIDTH_AND_HEIGHT" ||
+      override.textAutoResize === "TRUNCATE"
+    ) {
       style.textAutoResize = override.textAutoResize;
     }
     node.style = style as TextStyle;
@@ -482,13 +502,13 @@ export function resolveInstanceChildren(
       const textValue = value?.textValue as Record<string, unknown> | undefined;
       const characters = textValue?.characters as string | undefined;
       const boolValue = value?.boolValue as boolean | undefined;
-      const guidValue = value?.guidValue as Record<string, number> | undefined;
+      const guidValue = parseGUID(value?.guidValue);
       if (def) {
         assignments.push({
           defId: `${def.sessionID}:${def.localID}`,
           characters,
           visible: typeof boolValue === "boolean" ? boolValue : undefined,
-          symbolId: guidValue ? (guidValue as GUID) : undefined,
+          symbolId: guidValue,
         });
       }
     }
